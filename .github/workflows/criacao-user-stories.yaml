@@ -13,9 +13,14 @@ jobs:
     runs-on: ubuntu-latest
  
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
- 
+    
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          repository: pj-integration-agent/automation
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
