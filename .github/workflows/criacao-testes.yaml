@@ -2,7 +2,11 @@ name: Criação de testes
 run-name: Running - Criação de testes
 
 on:
-  workflow_call: {}
+  workflow_call:
+    inputs:
+      tipo-prompt:
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -34,6 +38,7 @@ jobs:
         run: python ai/generate/generate_tests_from_bdd.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PROMPT_TIPO: ${{ inputs.tipo-prompt }}
 
       - name: Commit tests
         run: |
