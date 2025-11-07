@@ -2,12 +2,7 @@ name: BDD Test Generation
 run-name: Running - Workflow USER STORY BDD TEST Generation
 
 on:
-  push:
-    branches: 
-      - main
-    paths:
-      - 'ai/requirements/*'
-  workflow_dispatch:
+  workflow_call: {}
 
 permissions:
   contents: write
