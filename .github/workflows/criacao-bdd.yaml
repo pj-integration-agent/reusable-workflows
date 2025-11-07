@@ -35,13 +35,13 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
-      - name: Commit user stories
+      - name: Commit BDDs
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull
           git add .
-          git commit -m "🤖 Gerando user stories" || echo "Nada para commitar"
+          git commit -m "🤖 Gerando BDDs" || echo "Nada para commitar"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
