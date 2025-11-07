@@ -1,5 +1,5 @@
-name: Criação de user stories
-run-name: Running - Criação user stories
+name: Criação de testes
+run-name: Running - Criação de testes
 
 on:
   workflow_call: {}
@@ -29,24 +29,19 @@ jobs:
       - name: Install dependencies
         run: |
           pip install groq pytest pytest-bdd
- 
-      - name: Generate User Stories from criterios.md
-        run: python ai/generate/generate_user_stories.py
+
+      - name: Generate Tests from BDD
+        run: python ai/generate/generate_tests_from_bdd.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
-      # - name: Generate Tests from BDD
-      #   run: python ai/generate/generate_tests_from_bdd.py
-      #   env:
-      #     GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-
-      - name: Commit user stories
+      - name: Commit tests
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull
           git add .
-          git commit -m "🤖 Gerando user stories" || echo "Nada para commitar"
+          git commit -m "🤖 Gerando testes" || echo "Nada para commitar"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
