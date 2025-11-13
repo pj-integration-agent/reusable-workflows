@@ -19,7 +19,7 @@ jobs:
         with:
           repository: pj-integration-agent/automation
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main
+          ref: ${{ github.ref_name }} 
           
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -44,9 +44,9 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull
+          git pull origin ${{ github.ref_name }}
           git add .
           git commit -m "🤖 Gerando user stories" || echo "Nada para commitar"
-          git push
+          git push origin ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
