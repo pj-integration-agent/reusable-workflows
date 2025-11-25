@@ -65,7 +65,7 @@ jobs:
           git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
           git push
         env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trigger - Criar Issues Automáticas
         uses: actions/github-script@v7
