@@ -1,7 +1,7 @@
 name: Criacao de Issues Automatizadas
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       results:
         description: "Resultados do Playwright"
