@@ -110,37 +110,41 @@ jobs:
             }
 
             for (const fail of allFailed) {
+
+              const issueBody = [
+                "## ❌ Teste Falhou",
+                "",
+                "### 📝 Teste",
+                `**${fail.title}**`,
+                "",
+                "### 📄 Arquivo",
+                `\`${fail.file}\``,
+                "",
+                "### 🔥 Erro",
+                "```",
+                fail.error,
+                "```",
+                "",
+                "### 🧵 Stacktrace",
+                "```",
+                fail.stack,
+                "```",
+                "",
+                "### 🔗 Execução",
+                `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                "",
+                "---",
+                "",
+                "*Issue criada automaticamente pelo workflow de QA.*"
+              ].join("\n");
+
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: `❌ Falha no teste: ${fail.title}`,
                 labels: ["test-failure", "bug"],
-                body: `
-## ❌ Teste Falhou
-
-### 📝 Teste
-**${fail.title}**
-
-### 📄 Arquivo
-\`${fail.file}\`
-
-### 🔥 Erro
-\`\`\`
-${fail.error}
-\`\`\`
-
-### 🧵 Stacktrace
-\`\`\`
-${fail.stack}
-\`\`\`
-
-### 🔗 Execução
-[Logs do Workflow](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-
----
-
-*Issue criada automaticamente pelo workflow de QA.*
-                `
+                body: issueBody
               });
             }
+
 
