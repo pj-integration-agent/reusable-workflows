@@ -2,11 +2,7 @@ name: Execução de Testes e Criação de Issues
 run-name: Running - Execução de testes
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-  pull_request:
+  workflow_call:
 
 permissions:
   contents: write
