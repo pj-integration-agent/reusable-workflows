@@ -2,7 +2,7 @@ name: Execucao de testes
 run-name: Running - Execução de testes
  
 on:
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: write
