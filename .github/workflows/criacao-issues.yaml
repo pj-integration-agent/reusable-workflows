@@ -8,6 +8,13 @@ on:
         required: true
         type: string
 
+  workflow_dispatch:
+    inputs:
+      results:
+        description: "Resultados do Playwright via trigger externo"
+        required: true
+        type: string
+
 permissions:
   issues: write
   contents: read
