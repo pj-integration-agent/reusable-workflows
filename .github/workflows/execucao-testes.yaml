@@ -120,7 +120,7 @@ jobs:
 ## ❌ Teste Falhou
 
 ### 📝 Teste
-**${fail.title}**
+${fail.title}
 
 ### 📄 Arquivo
 \`${fail.file}\`
