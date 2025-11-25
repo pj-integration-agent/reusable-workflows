@@ -2,7 +2,11 @@ name: Execução de Testes e Criação de Issues
 run-name: Running - Execução de testes
 
 on:
-  workflow_call:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
 
 permissions:
   contents: write
@@ -43,11 +47,6 @@ jobs:
           npx playwright test --reporter=json > playwright-report.json
         continue-on-error: true
 
-      - name: Coletar JSON de resultados
-        id: collect
-        run: |
-          echo "results=$(cat playwright-report.json | jq -c .)" >> $GITHUB_OUTPUT
-
       - name: Gerar análises com IA
         run: python ai/generate/generate_analise.py
         env:
@@ -63,7 +62,7 @@ jobs:
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-
+          
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
         with:
@@ -120,7 +119,7 @@ jobs:
 ## ❌ Teste Falhou
 
 ### 📝 Teste
-${fail.title}
+**${fail.title}**
 
 ### 📄 Arquivo
 \`${fail.file}\`
@@ -141,7 +140,7 @@ ${fail.stack}
 ---
 
 *Issue criada automaticamente pelo workflow de QA.*
-                `.trim()
+                `
               });
             }
 
