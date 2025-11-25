@@ -65,20 +65,20 @@ jobs:
           git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔥 DISPARAR PIPELINE DE CRIAÇÃO DE ISSUES
       - name: Trigger - Criar Issues Automáticas
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner: "pj-integration-agent",
+              repo: "reusable-workflows",
               workflow_id: "criacao-issues.yaml",
-              ref: context.ref,
+              ref: "main",
               inputs: {
                 results: `${{ steps.collect.outputs.results }}`
               }
             });
+
