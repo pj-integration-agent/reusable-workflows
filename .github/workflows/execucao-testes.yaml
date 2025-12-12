@@ -45,10 +45,8 @@ jobs:
       
       - name: Executar testes Playwright
         run: |
-          mkdir -p playwright-report
-          npx playwright test --reporter=json --output=playwright-report > playwright-report/results.json
-
-        continue-on-error: true
+          npx playwright test --reporter=json --output=playwright-report | tee playwright-report/results.json
+          continue-on-error: true
 
       # 6) Debug — mostrar arquivos gerados
       - name: Listar arquivos Playwright
