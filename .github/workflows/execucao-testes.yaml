@@ -58,29 +58,16 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
  
-      - name: Commit análises para o automation
+      - name: Commit BDDs
         run: |
-          cd code
-      
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-          # 🔥 FORÇAR O GIT A USAR O PAT DENTRO DA PASTA CODE
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation
-      
-          # Puxa atualizações sem criar merge commit
-          git pull --rebase || true
-      
-          # Copia análises do repositório de workflow para dentro do repo de code
-          cp -r ../ai/analysis/* ai/analysis/ 2>/dev/null || true
-      
-          git add ai/analysis/*
-          git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
-      
-          # Push com PAT
-          git push origin HEAD:main
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin ${{ github.ref_name }}
+          git add .
+          git commit -m "🤖 Executando testes" || echo "Nada para commitar"
+          git push origin ${{ github.ref_name }}
         env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
 
