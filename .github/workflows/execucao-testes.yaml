@@ -58,16 +58,19 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
  
-      - name: Commits testes
+      - name: Commit análises
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull origin ${{ github.ref_name }}
-          git add .
-          git commit -m "🤖 Executando testes" || echo "Nada para commitar"
-          git push origin ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+            git remote set-url origin https://github.com/pj-integration-agent/automation.git
+        
+            git pull origin implementacao-testes
+            git add ai/analysis/*
+            git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
+        
+            git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation.git HEAD:implementacao-testes
+
 
 
 
