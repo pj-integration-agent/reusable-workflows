@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout do repositório principal
+      # 1) Checkout do repositório alvo
       - name: Checkout main repository
         uses: actions/checkout@v4
         with:
           repository: pj-integration-agent/automation
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}   # NECESSÁRIO para clonar outro repo
           ref: ${{ github.ref_name }}
 
       # 2) Instala dependências Node
@@ -31,7 +31,7 @@ jobs:
       - name: Instalar Playwright
         run: npx playwright install --with-deps
 
-      # 4) Python para geração de análises
+      # 4) Setup Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -41,12 +41,11 @@ jobs:
         run: |
           pip install groq pytest pytest-bdd
 
-      # 5) Execução dos testes + geração de JSON confiável
+      # 5) Execução dos testes + geração de JSON
       - name: Executar testes Playwright
         continue-on-error: true
         run: |
           mkdir -p playwright-report
-          # Gera o JSON pelo stdout e salva em results.json
           npx playwright test --reporter=json > playwright-report/results.json
           echo "Arquivo JSON gerado em playwright-report/results.json"
 
@@ -56,7 +55,7 @@ jobs:
           echo "📂 Conteúdo do diretório playwright-report:"
           ls -R playwright-report || echo "⚠️ Nenhum arquivo encontrado"
 
-      # 7) Geração de análises por IA
+      # 7) IA para análises
       - name: Gerar análises com IA
         run: python ai/generate/generate_analise.py
         env:
@@ -72,13 +71,13 @@ jobs:
           git commit -m "🤖 Gerando Testes" || echo "Nada para commitar"
           git push origin ${{ github.ref_name }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Usar PAT para push também
 
       # 9) Criar Issues
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PAT_TOKEN }}
+          github-token: ${{ secrets.PAT_TOKEN }}   # PAT NECESSÁRIO
           script: |
             const fs = require("fs");
 
