@@ -32,7 +32,7 @@ jobs:
       - name: Instalação de dependências Node
         working-directory: code
         run: |
-          npm ci
+          npm install
           npm install --save-dev @types/node
           npm install --save-dev @playwright/test typescript ts-node
 
