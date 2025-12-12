@@ -44,7 +44,7 @@ jobs:
       # 5) Execução dos testes + geração de JSON
       - name: Executar testes Playwright
         run: |
-          npx playwright test --reporter=json --output=playwright-report
+          npx playwright test --reporter=json > report.json
         continue-on-error: true
 
       # 6) Debug — mostrar arquivos gerados
