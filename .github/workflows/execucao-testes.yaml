@@ -60,16 +60,16 @@ jobs:
  
       - name: Commit análises
         run: |
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        
-            git remote set-url origin https://github.com/pj-integration-agent/automation.git
-        
-            git pull origin implementacao-testes
-            git add ai/analysis/*
-            git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
-        
-            git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation.git HEAD:implementacao-testes
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git pull origin implementacao-testes || true
+          git add ai/analysis/*
+          git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
+
+          # 👇 PUSH 100% autenticado com PAT_TOKEN
+          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation.git HEAD:implementacao-testes
+
 
 
 
