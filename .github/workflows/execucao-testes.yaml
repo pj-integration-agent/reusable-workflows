@@ -13,21 +13,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) Checkout do repositório principal
       - name: Checkout main repository
         uses: actions/checkout@v4
         with:
           repository: pj-integration-agent/automation
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.ref_name }}
- 
+
+      # 2) Instala dependências Node
       - name: Instalação de dependências Node
         run: |
           npm install --save-dev @types/node
           npm install --save-dev @playwright/test typescript ts-node
- 
+
+      # 3) Instala Playwright
       - name: Instalação do Playwright
         run: npx playwright install --with-deps
 
+      # 4) Python para gerar análises
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -37,19 +41,23 @@ jobs:
         run: |
           pip install groq pytest pytest-bdd
 
+      # 5) Execução dos testes Playwright + geração do JSON
       - name: Execução de testes Playwright
         run: |
-          npx playwright test 
+          npx playwright test --reporter=json --output=playwright-report
         continue-on-error: true
- 
+
+      # 6) Apenas para debug
       - name: Listar resultados dos testes
-        run: ls -R test-results || echo "Nenhum arquivo encontrado"
- 
+        run: ls -R playwright-report || echo "Nenhum arquivo encontrado"
+
+      # 7) Gera análises de IA
       - name: Gerar análises com IA
         run: python ai/generate/generate_analise.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
- 
+
+      # 8) Commit dos testes gerados e outputs
       - name: Commit testes
         run: |
           git config --global user.name "github-actions[bot]"
@@ -61,17 +69,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
-
-
-
+      # 9) Criação automática de Issues para testes falhados
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const fs = require("fs");
-            const data = JSON.parse(fs.readFileSync("playwright-report.json"));
+            const path = "playwright-report/results.json";
+
+            if (!fs.existsSync(path)) {
+              console.log("❌ Arquivo JSON não encontrado:", path);
+              return;
+            }
+
+            const data = JSON.parse(fs.readFileSync(path));
 
             function extractFailedTests(suite) {
               let failed = [];
