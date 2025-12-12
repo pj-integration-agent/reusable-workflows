@@ -19,12 +19,12 @@ jobs:
           repository: pj-integration-agent/automation
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.ref_name }}
- 
+
       - name: Instalação de dependências Node
         run: |
-          npm install --save-dev @types/node
-          npm install --save-dev @playwright/test typescript ts-node
- 
+          npm ci
+          npm install --save-dev @types/node @playwright/test typescript ts-node
+
       - name: Instalação do Playwright
         run: npx playwright install --with-deps
 
@@ -37,112 +37,100 @@ jobs:
         run: |
           pip install groq pytest pytest-bdd
 
-      - name: Execução de testes Playwright
+      - name: Execução de testes Playwright (gera results.json)
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
         run: |
-          npx playwright test 
+          npx playwright test --reporter=json
         continue-on-error: true
- 
+
       - name: Listar resultados dos testes
-        run: ls -R test-results || echo "Nenhum arquivo encontrado"
- 
+        run: |
+          if [ -f results.json ]; then echo "results.json gerado"; ls -l results.json; else echo "Nenhum results.json encontrado"; fi
+
       - name: Gerar análises com IA
         run: python ai/generate/generate_analise.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
- 
+
+      # Commit se necessário (mantive seu passo)
       - name: Commit testes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull origin ${{ github.ref_name }}
+          git pull origin ${{ github.ref_name }} || true
           git add .
           git commit -m "🤖 Gerando Testes" || echo "Nada para commitar"
-          git push origin ${{ github.ref_name }}
+          git push origin ${{ github.ref_name }} || echo "Push falhou"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
-
-
-
-      - name: Criar Issues para Testes Falhados
+      - name: Criar issues para testes falhados (parse results.json e cria issue por falha)
+        if: always()
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PAT_TOKEN }}
+          # Defina o repositório alvo (owner/repo) explicitamente se desejar outro repo.
           script: |
-            const fs = require("fs");
-            const data = JSON.parse(fs.readFileSync("playwright-report.json"));
+            const fs = require('fs');
+            const path = 'results.json';
+            if (!fs.existsSync(path)) {
+              core = require('@actions/core');
+              core.info('results.json não encontrado — pulando criação de issues.');
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
 
-            function extractFailedTests(suite) {
-              let failed = [];
-
-              if (suite.specs) {
-                suite.specs.forEach(spec => {
-                  spec.tests.forEach(test => {
-                    if (test.status === "failed") {
-                      failed.push({
-                        title: spec.title,
-                        file: spec.file,
-                        error: test.error?.message || "Erro desconhecido",
-                        stack: test.error?.stack || "Sem stack"
-                      });
-                    }
-                  });
-                });
+            // Função recursiva para coletar objetos com status === 'failed'
+            const failed = [];
+            function walk(obj) {
+              if (!obj || typeof obj !== 'object') return;
+              if (Array.isArray(obj)) {
+                obj.forEach(walk);
+                return;
               }
-
-              if (suite.suites) {
-                suite.suites.forEach(inner => {
-                  failed = failed.concat(extractFailedTests(inner));
-                });
+              if (obj.status === 'failed') {
+                // tentativas de extrair título/erro de diferentes estruturas
+                const title = obj.title || (obj.fullTitle ? obj.fullTitle : null) || (obj.name ? obj.name : null);
+                let error = null;
+                if (obj.error && (obj.error.message || obj.error.stack)) {
+                  error = obj.error.message || obj.error.stack;
+                } else if (obj.results && Array.isArray(obj.results)) {
+                  // Playwright pode colocar erros em results[]
+                  const r = obj.results.find(x => x.status === 'failed' && x.error);
+                  if (r && r.error) error = r.error.message || r.error.stack || JSON.stringify(r.error);
+                }
+                failed.push({ title: title || 'Teste sem título', error: error || 'Sem mensagem de erro disponível', location: obj.file || obj.location || null });
               }
-
-              return failed;
+              Object.values(obj).forEach(v => walk(v));
             }
 
-            let allFailed = [];
-            data.suites.forEach(s => {
-              allFailed = allFailed.concat(extractFailedTests(s));
-            });
+            walk(data);
 
-            if (allFailed.length === 0) {
-              console.log("Nenhum teste falhou.");
+            if (failed.length === 0) {
+              console.log('Nenhum teste com status failed encontrado no results.json');
               return;
             }
 
-            for (const fail of allFailed) {
-              const issueBody = [
-                "## ❌ Teste Falhou",
-                "",
-                "### 📝 Teste",
-                `**${fail.title}**`,
-                "",
-                "### 📄 Arquivo",
-                `\`${fail.file}\``,
-                "",
-                "### 🔥 Erro",
-                "```",
-                fail.error,
-                "```",
-                "",
-                "### 🧵 Stacktrace",
-                "```",
-                fail.stack,
-                "```",
-                "",
-                "### 🔗 Execução",
-                `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-                "",
-                "---",
-                "",
-                "*Issue criada automaticamente pelo workflow de QA.*"
-              ].join("\n");
+            // Evitar criar issues duplicadas: opcional - aqui criamos sempre.
+            const owner = 'pj-integration-agent';
+            const repo  = 'automation';
 
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `❌ Falha no teste: ${fail.title}`,
-                labels: ["test-failure", "bug"],
-                body: issueBody
-              });
+            console.log(`Criando ${failed.length} issue(s) em ${owner}/${repo}`);
+
+            for (const t of failed) {
+              const title = `Teste falhou: ${t.title}`;
+              const body = `**Teste:** ${t.title}\n\n**Erro detectado:**\n\`\`\`\n${t.error}\n\`\`\`\n${t.location ? `\n**Arquivo:** ${t.location}\n` : ''}\n_Arquivo de relatório: results.json_`;
+              try {
+                await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title: title.substring(0, 256), // título limitado
+                  body,
+                  labels: ['test-failure','playwright'] // opcional: labels padrão
+                });
+                console.log(`Issue criada para: ${t.title}`);
+              } catch (err) {
+                console.error('Erro ao criar issue:', err);
+              }
             }
+
