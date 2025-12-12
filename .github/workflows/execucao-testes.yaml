@@ -13,94 +13,65 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      # 1️⃣ Checkout do repositório do WORKFLOW
-      - name: Checkout do repositório (workflow)
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
-
-      # 2️⃣ Checkout do repositório AUTOMATION (onde ficam os testes)
-      - name: Checkout repositório de testes (automation)
+      - name: Checkout main repository
         uses: actions/checkout@v4
         with:
           repository: pj-integration-agent/automation
-          token: ${{ secrets.PAT_TOKEN }}
-          path: code     # <- repositório cloneado dentro da pasta code/
-
-      # 3️⃣ Instalar dependências Node (dentro do "code")
-      - name: Instalar dependências Node
-        working-directory: code
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref_name }}
+ 
+      - name: Instalação de dependências Node
         run: |
           npm install --save-dev @types/node
           npm install --save-dev @playwright/test typescript ts-node
-
-      # 4️⃣ Instalar Playwright
-      - name: Instalar Playwright
-        working-directory: code
+ 
+      - name: Instalação do Playwright
         run: npx playwright install --with-deps
 
-      # 5️⃣ Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - name: Instalar dependências Python
+      - name: Install Python dependencies
         run: |
           pip install groq pytest pytest-bdd
 
-      # 6️⃣ Rodar os testes Playwright
-      - name: Executar testes Playwright
-        working-directory: code
+      - name: Execução de testes Playwright
         run: |
           npx playwright test 
         continue-on-error: true
-
-      # 7️⃣ Listar resultados
+ 
       - name: Listar resultados dos testes
-        working-directory: code
         run: ls -R test-results || echo "Nenhum arquivo encontrado"
-
-      # 8️⃣ Gerar análises com IA (roda no repositório do workflow)
+ 
       - name: Gerar análises com IA
         run: python ai/generate/generate_analise.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-
-      # 9️⃣ Commit das análises no repositório AUTOMATION
-      - name: Commit análises para o automation
-        working-directory: code
+ 
+      - name: Commit testes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          git pull --rebase
-
-          # copie os arquivos gerados pelo seu script para o automation
-          cp -r ../ai/analysis/* ai/analysis/ 2>/dev/null || true
-
-          git add ai/analysis/*
-          git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
-
-          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation.git
+          git pull origin ${{ github.ref_name }}
+          git add .
+          git commit -m "🤖 Gerando Testes" || echo "Nada para commitar"
+          git push origin ${{ github.ref_name }}
         env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔟 Criar Issues para testes falhados (no próprio repo do pipeline)
+
+
+
+
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const fs = require("fs");
-            const dataPath = "code/playwright-report.json";
-            if (!fs.existsSync(dataPath)) {
-              console.log("Nenhum arquivo playwright-report.json encontrado.");
-              return;
-            }
-
-            const data = JSON.parse(fs.readFileSync(dataPath));
+            const data = JSON.parse(fs.readFileSync("playwright-report.json"));
 
             function extractFailedTests(suite) {
               let failed = [];
