@@ -58,16 +58,28 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
  
-      - name: Commit análises
+      - name: Commit análises para o automation
+        working-directory: code
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull
+      
+          # 👇 FORÇA o repositório a usar PAT para push/pull
+          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation.git
+      
+          git pull --rebase
+      
+          # Copiar análises geradas no repositório principal
+          cp -r ../ai/analysis/* ai/analysis/ 2>/dev/null || true
+      
           git add ai/analysis/*
           git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
-          git push
+      
+          # Push com PAT
+          git push origin HEAD:main
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
 
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
