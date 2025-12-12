@@ -13,30 +13,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # =============================
-      # CHECKOUT DO REPOSITÓRIO
-      # =============================
-      - name: Checkout repository
+      - name: Checkout main repository
         uses: actions/checkout@v4
         with:
           repository: pj-integration-agent/automation
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.ref_name }}
-
-      # =============================
-      # NODE / PLAYWRIGHT
-      # =============================
-      - name: Instalar dependências Node
+ 
+      - name: Instalação de dependências Node
         run: |
-          npm install
-          npm install --save-dev @types/node @playwright/test typescript ts-node
-
-      - name: Instalar Playwright
+          npm install --save-dev @types/node
+          npm install --save-dev @playwright/test typescript ts-node
+ 
+      - name: Instalação do Playwright
         run: npx playwright install --with-deps
 
-      # =============================
-      # PYTHON / IA
-      # =============================
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -46,107 +37,82 @@ jobs:
         run: |
           pip install groq pytest pytest-bdd
 
-      # =============================
-      # EXECUTAR TESTES PLAYWRIGHT + GERAR JSON
-      # =============================
-      - name: Executar testes Playwright (JSON)
+      - name: Execução de testes Playwright
         run: |
-          npx playwright test --reporter=json > playwright-report.json
+          npx playwright test 
         continue-on-error: true
-
-      - name: Mostrar relatório JSON
-        run: cat playwright-report.json || echo "Arquivo JSON não encontrado"
-
-      # =============================
-      # ANÁLISE COM IA
-      # =============================
+ 
+      - name: Listar resultados dos testes
+        run: ls -R test-results || echo "Nenhum arquivo encontrado"
+ 
       - name: Gerar análises com IA
         run: python ai/generate/generate_analise.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-
-      # =============================
-      # COMMIT AUTOMÁTICO
-      # =============================
+ 
       - name: Commit testes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull origin ${{ github.ref_name }}
           git add .
-          git commit -m "🤖 Atualização automática de testes" || echo "Sem mudanças"
+          git commit -m "🤖 Gerando Testes" || echo "Nada para commitar"
           git push origin ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # =============================
-      # CRIAR ISSUES PARA TESTES FALHADOS
-      # =============================
+
+
+
+
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const fs = require("fs");
-
-            // =============================
-            // 1) LER ARQUIVO JSON
-            // =============================
-            if (!fs.existsSync("playwright-report.json")) {
-              console.log("Nenhum relatório JSON encontrado");
-              return;
-            }
-
             const data = JSON.parse(fs.readFileSync("playwright-report.json"));
 
-            // =============================
-            // 2) EXTRATOR DE TESTES FALHADOS
-            // =============================
-            function extractFailedTests(obj) {
+            function extractFailedTests(suite) {
               let failed = [];
 
-              if (obj?.specs) {
-                for (const spec of obj.specs) {
-                  for (const test of spec.tests || []) {
+              if (suite.specs) {
+                suite.specs.forEach(spec => {
+                  spec.tests.forEach(test => {
                     if (test.status === "failed") {
                       failed.push({
                         title: spec.title,
                         file: spec.file,
-                        error: test.error?.message ?? "Erro desconhecido",
-                        stack: test.error?.stack ?? "Sem stack"
+                        error: test.error?.message || "Erro desconhecido",
+                        stack: test.error?.stack || "Sem stack"
                       });
                     }
-                  }
-                }
+                  });
+                });
               }
 
-              if (obj?.suites) {
-                for (const suite of obj.suites) {
-                  failed = failed.concat(extractFailedTests(suite));
-                }
+              if (suite.suites) {
+                suite.suites.forEach(inner => {
+                  failed = failed.concat(extractFailedTests(inner));
+                });
               }
 
               return failed;
             }
 
-            // Coletar falhas de todas as suites
             let allFailed = [];
-            for (const suite of data.suites || []) {
-              allFailed = allFailed.concat(extractFailedTests(suite));
-            }
+            data.suites.forEach(s => {
+              allFailed = allFailed.concat(extractFailedTests(s));
+            });
 
             if (allFailed.length === 0) {
-              console.log("Nenhum teste falhou 👍");
+              console.log("Nenhum teste falhou.");
               return;
             }
 
-            // =============================
-            // 3) CRIAR UMA ISSUE POR TESTE FALHADO
-            // =============================
             for (const fail of allFailed) {
-
-              const issueBody = `
-                "## ❌ Teste Falhou"
+              const issueBody = [
+                "## ❌ Teste Falhou",
                 "",
                 "### 📝 Teste",
                 `**${fail.title}**`,
@@ -170,7 +136,7 @@ jobs:
                 "---",
                 "",
                 "*Issue criada automaticamente pelo workflow de QA.*"
-                ].join("\n");
+              ].join("\n");
 
               await github.rest.issues.create({
                 owner: context.repo.owner,
