@@ -66,7 +66,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
       
           # 🔥 FORÇAR O GIT A USAR O PAT DENTRO DA PASTA CODE
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation.git
+          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/pj-integration-agent/automation
       
           # Puxa atualizações sem criar merge commit
           git pull --rebase || true
