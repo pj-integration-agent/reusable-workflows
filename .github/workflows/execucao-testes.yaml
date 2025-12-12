@@ -68,7 +68,6 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
 
             const path = 'ai/analysis/analise_ia.txt';
 
@@ -85,10 +84,13 @@ jobs:
             }
 
             // Divide pelos blocos numerados: "1.", "2.", "3.", etc.
-            const blocks = text.split(/\n(?=\d+\.)/g).map(x => x.trim()).filter(x => x.length > 0);
+            const blocks = text
+              .split(/\n(?=\d+\.)/g)
+              .map(x => x.trim())
+              .filter(x => x.length > 0);
 
             if (blocks.length === 0) {
-              core.info("Nenhum bloco numérico encontrado na análise da IA.");
+              core.info("Nenhum bloco numerado encontrado na análise da IA.");
               return;
             }
 
@@ -97,11 +99,13 @@ jobs:
             for (const block of blocks) {
               const lines = block.split("\n").filter(l => l.trim().length > 0);
 
-              const title = lines[0].replace(/^\d+\.\s*/, '').substring(0, 200); // título sem "1."
+              const title = lines[0]
+                .replace(/^\d+\.\s*/, '')
+                .substring(0, 200);
 
               const body = `### Análise da IA\n\n${block}\n\n---\n_Gerado automaticamente pela pipeline CI_`;
 
-              console.log(`Criando issue: ${title}`);
+              core.info(`Criando issue: ${title}`);
 
               await github.rest.issues.create({
                 owner,
