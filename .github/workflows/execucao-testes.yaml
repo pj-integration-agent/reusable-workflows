@@ -42,9 +42,11 @@ jobs:
           pip install groq pytest pytest-bdd
 
       # 5) Execução dos testes + geração de JSON
+      
       - name: Executar testes Playwright
         run: |
-          npx playwright test --reporter=json --output=playwright-report
+          mkdir -p playwright-report
+          npx playwright test --reporter=json --output=playwright-report > playwright-report/results.json
 
         continue-on-error: true
 
