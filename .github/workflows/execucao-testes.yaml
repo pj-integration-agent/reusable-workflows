@@ -27,24 +27,14 @@ jobs:
           repository: pj-integration-agent/automation   # << ALTERE AQUI
           path: code                      # checkout em pasta separada
           token: ${{ secrets.PAT_TOKEN }}
-
-      # 3️⃣ Instalar dependências Node no repositório de testes
+ 
       - name: Instalação de dependências Node
-        working-directory: code
         run: |
-          npm install
           npm install --save-dev @types/node
           npm install --save-dev @playwright/test typescript ts-node
-
+ 
       - name: Instalação do Playwright
-        working-directory: code
         run: npx playwright install --with-deps
-
-      - name: Execução de testes Playwright
-        working-directory: code
-        run: |
-          npx playwright test --reporter=json > ../playwright-report.json
-        continue-on-error: true
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -55,11 +45,19 @@ jobs:
         run: |
           pip install groq pytest pytest-bdd
 
+      - name: Execução de testes Playwright
+        run: |
+          npx playwright test 
+        continue-on-error: true
+ 
+      - name: Listar resultados dos testes
+        run: ls -R test-results || echo "Nenhum arquivo encontrado"
+ 
       - name: Gerar análises com IA
         run: python ai/generate/generate_analise.py
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-
+ 
       - name: Commit análises
         run: |
           git config --global user.name "github-actions[bot]"
@@ -69,7 +67,7 @@ jobs:
           git commit -m "🤖 Gerando análises e conselhos automáticos [skip ci]" || echo "Nada para commitar"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
