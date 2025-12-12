@@ -24,7 +24,7 @@ jobs:
       - name: Checkout do repositório de testes
         uses: actions/checkout@v4
         with:
-          repository: ORG/REPO-DO-CODIGO   # << ALTERE AQUI
+          repository: pj-automation-agent/automation   # << ALTERE AQUI
           path: code                      # checkout em pasta separada
           token: ${{ secrets.PAT_TOKEN }}
 
