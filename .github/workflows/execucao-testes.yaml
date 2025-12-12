@@ -21,13 +21,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.ref_name }}
 
-      # 2) Instala dependências Node
+      # 2) Instalar dependências Node
       - name: Instalar dependências Node
         run: |
           npm install --save-dev @types/node
           npm install --save-dev @playwright/test typescript ts-node
 
-      # 3) Instala Playwright
+      # 3) Instalar Playwright + deps do sistema
       - name: Instalar Playwright
         run: npx playwright install --with-deps
 
@@ -41,13 +41,13 @@ jobs:
         run: |
           pip install groq pytest pytest-bdd
 
-      # 5) Execução dos testes + geração de JSON
-      
+      # 5) Execução dos testes + geração do JSON corretamente
       - name: Executar testes Playwright
         run: |
           mkdir -p playwright-report
+          echo "▶️ Executando testes Playwright..."
           npx playwright test --reporter=json | tee playwright-report/results.json
-          continue-on-error: true
+        continue-on-error: true   # <-- CORRETO AQUI
 
       # 6) Debug — mostrar arquivos gerados
       - name: Listar arquivos Playwright
@@ -77,14 +77,13 @@ jobs:
       - name: Criar Issues para Testes Falhados
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PAT_TOKEN }}  # Necessário porque é cross-org
+          github-token: ${{ secrets.PAT_TOKEN }}  # Necessário cross-org
           script: |
             const fs = require("fs");
 
-            // Caminhos possíveis gerados pelo Playwright
             const candidates = [
-              "playwright-report/test-results.json",
               "playwright-report/results.json",
+              "playwright-report/test-results.json",
               "playwright-report/report.json",
               "test-results.json"
             ];
@@ -109,7 +108,7 @@ jobs:
 
             function extractFailedTests(suite) {
               let failed = [];
-              
+
               if (suite.specs) {
                 suite.specs.forEach(spec => {
                   spec.tests.forEach(test => {
