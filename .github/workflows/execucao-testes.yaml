@@ -70,49 +70,36 @@ jobs:
             const fs = require('fs');
 
             const path = 'ai/analysis/analise_ia.txt';
-
+            
             if (!fs.existsSync(path)) {
               core.info("Arquivo da IA não encontrado. Nenhuma issue será criada.");
               return;
             }
-
+            
             const text = fs.readFileSync(path, 'utf8').trim();
-
+            
             if (!text) {
               core.info("Arquivo da IA está vazio. Nenhuma issue será criada.");
               return;
             }
-
-            // Divide pelos blocos numerados: "1.", "2.", "3.", etc.
-            const blocks = text
-              .split(/\n(?=\d+\.)/g)
-              .map(x => x.trim())
-              .filter(x => x.length > 0);
-
-            if (blocks.length === 0) {
-              core.info("Nenhum bloco numerado encontrado na análise da IA.");
-              return;
-            }
-
+            
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-
-            for (const block of blocks) {
-              const lines = block.split("\n").filter(l => l.trim().length > 0);
-
-              const title = lines[0]
-                .replace(/^\d+\.\s*/, '')
-                .substring(0, 200);
-
-              const body = `### Análise da IA\n\n${block}\n\n---\n_Gerado automaticamente pela pipeline CI_`;
-
-              core.info(`Criando issue: ${title}`);
-
-              await github.rest.issues.create({
-                owner,
-                repo,
-                title,
-                body,
-                labels: ["playwright", "test-failure", "ai-analysis"]
-              });
-            }
-
+            
+            const title = `🧪 Relatório automático de falhas de testes (${new Date().toISOString().slice(0,10)})`;
+            
+            const body = `
+            ## 🤖 Análise automática de testes (Playwright)
+            
+            ${text}
+            
+            ---
+            _Gerado automaticamente pela pipeline CI_
+            `;
+            
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ["playwright", "test-failure", "ai-analysis"]
+            });
