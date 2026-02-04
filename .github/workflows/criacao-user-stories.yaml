@@ -27,12 +27,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install google-generativeai pytest pytest-bdd
+          pip install google-genai pytest pytest-bdd
 
       - name: Generate User Stories from criterios.md
         run: python ai/generate/generate_user_stories.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
 
       - name: Commit user stories
         run: |
