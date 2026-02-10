@@ -1,113 +1,105 @@
-name: Criacao de Issues Automatizadas
+name: Execução de Testes e Criação de Issues
+run-name: Running - Execução de testes
 
 on:
   workflow_call:
-    inputs:
-      results:
-        description: "Resultados do Playwright"
-        required: true
-        type: string
-
-  workflow_dispatch:
-    inputs:
-      results:
-        description: "Resultados do Playwright via trigger externo"
-        required: true
-        type: string
 
 permissions:
+  contents: write
   issues: write
-  contents: read
 
 jobs:
-  create-issues:
+  generate-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Parse do JSON de resultados
-        id: parse
-        run: |
-          echo '${{ inputs.results }}' > results.json
-          cat results.json
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          repository: pj-integration-agent/automation
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref_name }}
 
-      - name: Criar issues por cada teste falhado
+      - name: Instalação de dependências Node
+        run: |
+          npm install --save-dev @types/node
+          npm install --save-dev @playwright/test typescript ts-node
+
+      - name: Instalação do Playwright
+        run: npx playwright install --with-deps
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Python dependencies
+        run: |
+          pip install anthropic pytest pytest-bdd
+
+      - name: Execução de testes Playwright
+        run: |
+          npx playwright test
+        continue-on-error: true
+
+      - name: Listar resultados dos testes
+        run: ls -R test-results || echo "Nenhum arquivo encontrado"
+
+      - name: Gerar análises com IA
+        run: python ai/generate/generate_analise.py
+        env:
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_MODEL: claude-3-haiku-20240307
+
+      - name: Commit testes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin ${{ github.ref_name }}
+          git add .
+          git commit -m "🤖 Gerando análise de testes com Claude AI" || echo "Nada para commitar"
+          git push origin ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Criar issues com base na análise da IA
+        if: always()
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require("fs");
+            const fs = require('fs');
 
-            const data = JSON.parse(fs.readFileSync("results.json"));
-
-            // Playwright JSON: data.suites → specs → tests
-            function extractFailedTests(suite) {
-              let failed = [];
-
-              if (suite.specs) {
-                suite.specs.forEach(spec => {
-                  spec.tests.forEach(test => {
-                    if (test.status === "failed") {
-                      failed.push({
-                        title: spec.title,
-                        file: spec.file,
-                        error: test.error?.message || "Erro desconhecido",
-                        stack: test.error?.stack || "Sem stack"
-                      });
-                    }
-                  });
-                });
-              }
-
-              if (suite.suites) {
-                suite.suites.forEach(inner => {
-                  failed = failed.concat(extractFailedTests(inner));
-                });
-              }
-
-              return failed;
-            }
-
-            let allFailed = [];
-            data.suites.forEach(s => {
-              allFailed = allFailed.concat(extractFailedTests(s));
-            });
-
-            if (allFailed.length === 0) {
-              console.log("Nenhum teste falhou.");
+            const path = 'ai/analysis/analise_ia.txt';
+            
+            if (!fs.existsSync(path)) {
+              core.info("Arquivo da IA não encontrado. Nenhuma issue será criada.");
               return;
             }
-
-            for (const fail of allFailed) {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `❌ Falha no teste: ${fail.title}`,
-                labels: ["test-failure", "bug"],
-                body: `
-## ❌ Teste Falhou
-
-### 📝 Teste
-**${fail.title}**
-
-### 📄 Arquivo
-\`${fail.file}\`
-
-### 🔥 Erro
-\`\`\`
-${fail.error}
-\`\`\`
-
-### 🧵 Stacktrace
-\`\`\`
-${fail.stack}
-\`\`\`
-
-### 🔗 Execução
-[Logs do Workflow](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-
----
-
-*Issue criada automaticamente pelo workflow de QA.*
-                `.trim()
-              });
+            
+            const text = fs.readFileSync(path, 'utf8').trim();
+            
+            if (!text) {
+              core.info("Arquivo da IA está vazio. Nenhuma issue será criada.");
+              return;
             }
+            
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            
+            const title = `🧪 Relatório automático de falhas de testes (${new Date().toISOString().slice(0,10)})`;
+            
+            const body = `
+            ## 🤖 Análise automática de testes (Playwright)
+            
+            ${text}
+            
+            ---
+            _Gerado automaticamente pela pipeline CI_
+            `;
+            
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ["playwright", "test-failure", "ai-analysis"]
+            });
